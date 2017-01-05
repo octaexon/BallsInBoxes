@@ -1,0 +1,65 @@
+#! /bin/bash
+
+
+# This script is responsible for compiling the simulator and tarball production.
+#
+#
+# 1. One can compile the source:
+#       ./maker
+#
+# 2. One can clean the output tree:
+#       ./maker clean
+#
+# 3. One can make a tarball of the source:
+#       ./maker tar
+# 
+# In cases 1. and 3., the output is placed in a separate directory (created if necessary).
+
+
+
+# scripts for the program
+SCRIPTS="maker simulator analyser plotphase plotexponent"
+TOOLS_DIR=bibtools
+
+# where to place the builds
+OUTPUT_DIR=bin
+# relative path to source code
+SOURCE_DIR=src
+SOURCE_MAKEFILE=$SOURCE_DIR/makefile
+
+
+TAR_DIRECTIVE=tar
+TAR_FILE=bib$(date +"_%Y_%m_%d_%H_%M_%S").tar
+
+# if not told to make tarball
+if [[ "$1" != "$TAR_DIRECTIVE" ]] 
+then
+    # create output directory if necessary
+    if [[ ! -d $OUTPUT_DIR ]]
+    then
+        if ! mkdir -p $OUTPUT_DIR
+        then
+            echo "Cannot create output directory" > /dev/stderr
+            exit 1 
+        fi
+    fi
+    # check that source directory exists
+    # note that relative paths are necessary
+    if [[ ! -d $SOURCE_DIR ]]
+    then
+        echo "Error: source directory $SOURCE_DIR does not exist"
+        exit 2
+    fi
+    # Compile the source
+    make --directory=$OUTPUT_DIR --file=../$SOURCE_MAKEFILE SRC_DIR=../$SOURCE_DIR "$@"
+    # --directory option changes directory BEFORE make files are called. Thus,
+    # relative paths are necessary.
+    #
+else
+    # create the tarball
+    tar -cvf $TAR_FILE  --exclude='.gitignore' --exclude='.DS_Store' --exclude='.ycm*' \
+         $SCRIPTS $SOURCE_DIR $TOOLS_DIR
+    #
+fi
+
+

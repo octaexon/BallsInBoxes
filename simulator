@@ -1,0 +1,151 @@
+#!/usr/bin/env python3
+
+import logging
+import sys
+import csv
+import os
+from datetime import datetime
+
+from   bibtools.defaults      import DATA_DIR, SIMULATION_EXEC
+import bibtools.io            as     bibio
+
+from   bibtools.configuration import Configuration
+from   bibtools.data          import Data
+from   bibtools.usage         import usage
+
+
+def main(argv):
+    ''' simulates balls-in-boxes markov chains '''
+
+
+    ## LOGGER ##
+
+    # root logger basic configuration
+    logging.basicConfig(level=logging.INFO,
+        format='\033[0;36m%(levelname)-8s\033[0m : \033[0;31m%(name)-12s\033[0m : %(message)s',
+                    datefmt='%y-%m-%d %H:%M')
+
+    # logger for main function
+    logger = logging.getLogger(__file__)
+
+
+    ## SIMULATION SETTINGS ##
+
+    # toplevel subdirectory of project path to read input and write output
+    input_dir   = DATA_DIR
+    output_dir  = DATA_DIR
+
+
+    program_root_dir = os.path.dirname(argv[0])
+    simulation_exec  = os.path.join(program_root_dir, SIMULATION_EXEC)
+
+
+    ## COMMAND LINE ##
+
+    # parse and validate command line input
+    try:
+        # parse
+        project_dir, config_file = bibio.parse_command_line(argv[1:])
+    except (bibio.CommandLineError, bibio.HelpInterrupt):
+        usage(__file__)
+        sys.exit(2)
+
+    # ensure existence base directories
+    try:
+        base_input_path  = bibio.generate_base_path(project_dir, input_dir)
+        base_output_path = bibio.generate_base_path(project_dir, output_dir)
+    except FileNotFoundError as err:
+        logger.error('terminating')
+        sys.exit(2)
+
+
+    ## CONFIGURATIONS ##
+
+    # read the contents of the config file into a dictionary
+    try:
+        contents = bibio.read_config_csv(config_file)
+    except IOError as err:
+        logger.error('terminating')
+        sys.exit(2)
+
+    for row in contents:
+        # configurations for initial burn-in and later sample simulation
+        burn_in_cfg = Configuration()
+        samples_cfg = Configuration()
+
+        # load values configuration parameters
+        try:
+            burn_in_cfg.set_values_from_dict(row)
+            samples_cfg.set_values_from_dict(row)
+        except (KeyError, ValueError) as err:
+            logger.warning('skipping configuration\n')
+            continue
+
+        # generate paths
+        try:
+            full_input_path  = samples_cfg.generate_full_path(base_input_path)
+            full_output_path = samples_cfg.generate_full_path(base_output_path)
+        except FileNotFoundError as err:
+            logger.error('terminating')
+            sys.exit(2)
+
+
+        # notify of current configuration
+        logger.info(samples_cfg)
+
+
+        ## DATA GENERATION ##
+
+        # timing mechanism
+        start_time = datetime.now()
+        logger.info('start time : {}'.format(start_time))
+
+        data = Data()
+
+        indexed_seed = []
+        potential_seeds    = burn_in_cfg.get_potential_seeds(base_input_path)
+        # attempt load data from seed path
+        while not indexed_seed:
+            try:
+                seed_burn, seed_path = next(potential_seeds)
+                indexed_seed         = data.last_indexed_sample(seed_path)
+            except StopIteration:
+                seed_burn = None
+                break
+            except (OSError, FileNotFoundError, ValueError):
+                logger.warning('skipping configuration')
+                continue
+
+        # simulate
+        try:
+            burn_in_cfg.simulate(simulation_exec, indexed_seed, full_output_path, seed_burn)
+        except IndexError:
+            logger.warning('skipping configuration')
+            continue
+
+        # make another attempt
+        # if seed already available with the wanted burn-in, than burn_in_cfg
+        # will have done the sample collecting and the following is superfluous.
+        # On the other hand, maybe burn_in_cfg actually needed to do some burning-in
+        # Then, this is needed to do the actual sample aggregation.
+        try:
+            indexed_seed = data.last_indexed_sample(full_output_path)
+        except (OSError, FileNotFoundError, ValueError):
+            logger.warning('skipping configuration')
+            continue
+
+        try:
+            samples_cfg.simulate(simulation_exec, indexed_seed, full_output_path)
+        except IndexError:
+            logger.warning('skipping configuration')
+            continue
+
+        # timing mechanism
+        end_time = datetime.now()
+        logger.info('end time   : {}'.format(end_time))
+        duration = end_time - start_time
+        logger.info('duration   : {}'.format(duration))
+
+
+if __name__ == '__main__':
+    main(sys.argv[:])

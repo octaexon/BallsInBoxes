@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+
+import logging
+import sys
+
+from   bibtools.defaults      import (ANALYSES_DIR, PLOTS_DIR, BATCH)
+import bibtools.io            as     bibio
+
+from   bibtools.configuration import Configuration
+from   bibtools.data          import Data
+from   bibtools.usage         import usage
+from   bibtools.analysis      import Analysis
+from   bibtools.diagram      import Diagram
+
+
+
+def main(argv):
+    ''' plots phase diagram for balls-in-boxes model '''
+
+    try:
+        ## LOGGER ##
+
+        # root logger basic configuration
+        logging.basicConfig(level=logging.INFO,
+            format='\033[0;36m%(levelname)-8s\033[0m : \033[0;31m%(name)-12s\033[0m : %(message)s',
+                        datefmt='%y-%m-%d %H:%M')
+
+        # logger for portion
+        logger = logging.getLogger(__file__)
+
+
+        ## LOAD DEFAULTS ##
+
+        input_dir   = ANALYSES_DIR
+        output_dir  = PLOTS_DIR
+
+
+        # stores phases
+        try:
+            diagram  = Diagram()
+        except TypeError as err:
+            raise RuntimeError from err
+
+        ## COMMAND LINE ##
+
+        # parse and validate command line input
+        try:
+            # parse
+            project_path, config_file = bibio.parse_command_line(argv)
+        except (bibio.CommandLineError, bibio.HelpInterrupt):
+            usage(__file__)
+            sys.exit(2)
+
+        # ensure base directories
+        try:
+            base_input_path  = bibio.generate_base_path(project_path, input_dir)
+            base_output_path = bibio.generate_base_path(project_path, output_dir)
+        except FileNotFoundError as err:
+            raise RuntimeError from err
+
+
+        ## CONFIGURATION ##
+
+        # read the contents of the config file into a dictionary
+        try:
+            contents = bibio.read_config_csv(config_file)
+        except IOError as err:
+            raise RuntimeError from err
+
+        for row in contents:
+            # holds configurations
+            cfg = Configuration()
+
+            # load values configuration parameters
+            try:
+                cfg.set_values_from_dict(row)
+            except (KeyError, ValueError) as err:
+                logger.warning('skipping configuration')
+                continue
+
+            try:
+                full_input_path  = cfg.generate_full_path(base_input_path)
+                input_file       = bibio.generate_analysis_filename(full_input_path, str(cfg[BATCH]))
+            except FileNotFoundError as err:
+                logger.warning('skipping configuration')
+                continue
+
+            # display configuration being analysed
+            logger.info(cfg)
+
+            ## ANALYSIS ##
+
+            analysis = Analysis()
+
+            # loads analysis
+            try:
+                analysis.set_values_from_dict(bibio.read_analysis_csv(input_file))
+            except (FileNotFoundError, IndexError):
+                logger.warning('skipping configuration')
+                continue
+
+            # incorporates analysis in phase diagram
+            diagram.load(analysis, cfg)
+
+        # plot phase diagram
+        output_file = bibio.generate_plot_file(base_output_path)
+        diagram.plot(output_file)
+
+    except RuntimeError:
+        logger.error('terminating')
+        sys.exit(2)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])
