@@ -3,20 +3,21 @@
 BallsInBoxes is a Markov-Chain-Monte-Carlo simulator for a class of statistical mechanical systems known as
 balls-in-boxes models.  The default weights are pertinent for capturing volume
 profiles of 2+1 causal dynamical triangulations within this simpler framework.
-Results of the analysis are available [here] (https://arxiv.org/abs/1612.09533).
+
+Results of the analysis are presented in:  
+[D. Benedetti] (https://sites.google.com/site/dariobene/), [J. Ryan](https://github.com/octaexon) : 
+[Capturing the phase diagram of (2+1)-dimensional CDT using a balls-in-boxes model] (https://arxiv.org/abs/1612.09533)
+
 
 ## Installation
 
 1. Either download or clone the repository.
-2. Move to code root directory:
-```bash
-cd BallsInBoxes
-```
-3. Run:
-```bash
-./maker
-```
-to compile the C++11 source code. `maker` utilizes the Gnu compiler `g++`.
+2. Move to code root directory: `cd BallsInBoxes`
+3. Run: `./maker`
+to compile the C++11 source code. 
+
+##### Note: 
+`maker` utilizes the Gnu compiler `g++`.
 
 ## Usage
 
