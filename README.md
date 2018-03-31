@@ -5,8 +5,8 @@ balls-in-boxes models.  The default weights are pertinent for capturing volume
 profiles of 2+1 causal dynamical triangulations within this simpler framework.
 
 Results of the analysis are presented in:  
-[D. Benedetti] (https://sites.google.com/site/dariobene/), [J. Ryan](https://github.com/octaexon) : 
-[Capturing the phase diagram of (2+1)-dimensional CDT using a balls-in-boxes model] (https://arxiv.org/abs/1612.09533)
+[D. Benedetti](https://sites.google.com/site/dariobene/), [J. Ryan](https://github.com/octaexon) : 
+[Capturing the phase diagram of (2+1)-dimensional CDT using a balls-in-boxes model](https://arxiv.org/abs/1612.09533)
 
 
 ## Installation
